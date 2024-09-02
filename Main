@@ -1,1 +1,119 @@
 
+"""
+EchoCreese-Chain: A Secure Communication Protocol
+
+This module implements a secure communication protocol using elliptic curve cryptography
+and symmetric encryption. It provides functions for key exchange, encryption, and decryption.
+
+Classes:
+    CryptographyManager: Manages cryptographic operations, including key exchange, encryption, and decryption.
+
+Functions:
+    derive_shared_secret_key: Derives a shared secret key using elliptic curve Diffie-Hellman (ECDH).
+    encrypt: Encrypts a message using symmetric encryption (ChaCha20-Poly1305).
+    decrypt: Decrypts a message using symmetric encryption (ChaCha20-Poly1305).
+"""
+
+from cryptography.hazmat.primitives.ciphers import Cipher, algorithms, modes
+from cryptography.hazmat.primitives import hashes, serialization
+from cryptography.hazmat.primitives.asymmetric import ec, padding
+from cryptography.hazmat.backends import default_backend
+import os
+import hmac
+import secrets
+
+class CryptographyManager:
+    """
+    Manages cryptographic operations, including key exchange, encryption, and decryption.
+
+    Attributes:
+        private_key (ec.EllipticCurvePrivateKey): Private key for ECDH key exchange.
+        peer_public_key (ec.EllipticCurvePublicKey): Peer's public key for ECDH key exchange.
+        shared_secret_key (bytes): Shared secret key derived from ECDH key exchange.
+        cryptographic_key (bytes): Cryptographic key derived from shared secret key.
+        mac_key (bytes): MAC key derived from cryptographic key.
+    """
+
+    def __init__(self):
+        """
+        Initializes the CryptographyManager instance.
+        """
+        self.private_key = ec.generate_private_key(ec.SECP384R1(), default_backend())
+        self.peer_public_key = self.load_peer_public_key()
+        self.shared_secret_key = self.derive_shared_secret_key()
+        self.cryptographic_key = self.derive_cryptographic_key()
+        self.mac_key = self.cryptographic_key[:16]
+
+    def load_peer_public_key(self):
+        """
+        Loads the peer's public key from a file.
+
+        Returns:
+            ec.EllipticCurvePublicKey: Peer's public key.
+        """
+        with open("peer_public_key.pem", "rb") as key_file:
+            return serialization.load_pem_public_key(key_file.read(), default_backend())
+
+    def derive_shared_secret_key(self):
+        """
+        Derives a shared secret key using elliptic curve Diffie-Hellman (ECDH).
+
+        Returns:
+            bytes: Shared secret key.
+        """
+        return self.private_key.exchange(ec.ECDH(), self.peer_public_key)
+
+    def derive_cryptographic_key(self):
+        """
+        Derives a cryptographic key from the shared secret key.
+
+        Returns:
+            bytes: Cryptographic key.
+        """
+        hkdf = hashes.HKDF(
+            algorithm=hashes.SHA256(),
+            length=32,
+            salt=secrets.token_bytes(16),
+            info=b'handshake data',
+            backend=default_backend()
+        )
+        return hkdf.derive(self.shared_secret_key)
+
+    def encrypt(self, message):
+        """
+        Encrypts a message using symmetric encryption (ChaCha20-Poly1305).
+
+        Args:
+            message (bytes): Message to encrypt.
+
+        Returns:
+            bytes: Encrypted message.
+        """
+        cipher = Cipher(algorithms.ChaCha20Poly1305(self.cryptographic_key), mode=None, backend=default_backend())
+        encryptor = cipher.encryptor()
+        nonce = secrets.token_bytes(12)
+        ciphertext = encryptor.update(nonce + message) + encryptor.finalize()
+        mac = hmac.new(self.mac_key, ciphertext, hashes.SHA256()).digest()
+        return nonce + ciphertext + mac
+
+    def decrypt(self, ciphertext):
+        """
+        Decrypts a message using symmetric encryption (ChaCha20-Poly1305).
+
+        Args:
+            ciphertext (bytes): Encrypted message.
+
+        Returns:
+            bytes: Decrypted message.
+        """
+        nonce = ciphertext[:12]
+        ciphertext = ciphertext[12:-32]
+        mac = ciphertext[-32:]
+        expected_mac = hmac.new(self.mac_key, nonce + ciphertext, hashes.SHA256()).digest()
+        if hmac.compare_digest(mac, expected_mac):
+            cipher = Cipher(algorithms.ChaCha20Poly1305(self.cryptographic_key), mode=None, backend=default_backend())
+            decryptor = cipher.decryptor()
+            return decryptor.update(nonce + ciphertext) + decryptor.finalize()[12:]
+        else:
+            raise ValueError("MAC verification failed")
+
