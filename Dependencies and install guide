@@ -1,0 +1,35 @@
+
+
+*Dependencies:*
+
+- `cryptography` (version 3.4.0 or higher)
+- `hmac` (built-in Python module)
+- `hashes` (built-in Python module)
+- `secrets` (built-in Python module)
+- `os` (built-in Python module)
+
+*Install Instructions:*
+
+1. Install the `cryptography` library using pip:
+```
+pip install cryptography
+```
+1. Ensure that OpenSSL is installed on your system. You can download it from the official OpenSSL website if needed.
+2. Generate private and public keys using OpenSSL:
+```
+openssl ecparam -name secp384r1 -genkey -noout -out private_key.pem
+openssl ec -in private_key.pem -pubout -out public_key.pem
+```
+1. Create a file named `peer_public_key.pem` in the same directory as the EchoCreese-Chain code and copy the contents of the public key file (`public_key.pem`) into it.
+2. Run the EchoCreese-Chain code using Python:
+```
+python (link unavailable)
+```
+Note: Make sure to replace `(link unavailable)` with the actual file name of the EchoCreese-Chain code.
+
+*Additional Requirements:*
+
+- Python 3.x (version 3.6 or higher recommended)
+- A secure random number generator (provided by the `secrets` module)
+
+By following these instructions, you should be able to install and run the EchoCreese-Chain code successfully.
