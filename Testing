@@ -1,18 +1,1 @@
-import unittest
 
-class TestEchoCreeseChain(unittest.TestCase):
-    def test_ecke_protocol(self):
-        # Test the ECKE protocol
-        pass
-
-    def test_eche_scheme(self):
-        # Test the ECHE scheme
-        pass
-
-    def test_ecae_mode(self):
-        # Test the ECAE mode
-        pass
-
-    def test_echocreezechain_cipher(self):
-        # Test the EchoCreese-Chain Cipher
-        pass
